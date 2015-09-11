@@ -14,7 +14,7 @@ class GeoserverInterface(object):
     def __init__(self, server_url):
         self.server_url = server_url
 
-    def download_questions(self, *args):
+    def download_questions(self, *args, **kwargs):
         """
         key='all': download all
         key=[development,test]: download dev and test
@@ -33,20 +33,32 @@ class GeoserverInterface(object):
         data = json.loads(r.text, object_hook=_decode_dict)
         questions = {}
         for pair in data:
-            diagram_url = pair['diagram_url']
-            temp_dir = tempfile.mkdtemp()
-            temp_name = os.path.basename(urlparse.urlparse(diagram_url).path)
-            temp_filepath = os.path.join(temp_dir, temp_name)
-            urllib.urlretrieve(diagram_url, temp_filepath)
-            choices = {int(key): pair['choices'][key] for key in pair['choices']}
-            words = {int(index): {int(index): word for index, word in words.iteritems()} for index, words in pair['words'].iteritems()}
-            question = Question(pair['pk'], pair['text'], words, temp_filepath, choices)
+            if 'no_diagram' in kwargs and kwargs['no_diagram']:
+                temp_filepath = ""
+            else:
+                diagram_url = pair['diagram_url']
+                temp_dir = tempfile.mkdtemp()
+                temp_name = os.path.basename(urlparse.urlparse(diagram_url).path)
+                temp_filepath = os.path.join(temp_dir, temp_name)
+                urllib.urlretrieve(diagram_url, temp_filepath)
+            choice_words = {int(number): {int(index): word for index, word in words.iteritems()} for number, words in pair['choice_words'].iteritems()}
+            choices = {int(number): text for number, text in pair['choices'].iteritems()}
+            sentence_expressions ={int(number): {index: expr for index, expr in exprs.iteritems()} for number, exprs in pair['sentence_expressions'].iteritems()}
+            sentence_words = {int(number): {int(index): word for index, word in words.iteritems()} for number, words in pair['sentence_words'].iteritems()}
+            choice_expressions ={int(number): {index: expr for index, expr in exprs.iteritems()} for number, exprs in pair['choice_expressions'].iteritems()}
+            answer = pair['answer']
+            question = Question(pair['pk'], pair['text'], sentence_words, sentence_expressions, temp_filepath, choice_words, choice_expressions, answer, choices)
             questions[question.key] = question
         return questions
 
-    def download_labels(self, key="all"):
+    def download_labels(self, *args):
+        if len(args) == 0:
+            key = 'all'
+        else:
+            key = "+".join(str(x) for x in args)
         suburl = "/labels/download/%s" % str(key)
         request_url = urlparse.urljoin(self.server_url, suburl)
+        print "accessing: %s" % request_url
         r = requests.get(request_url)
         data = json.loads(r.text, object_hook=_decode_dict)
         labels = {}
@@ -56,13 +68,14 @@ class GeoserverInterface(object):
             labels[question_pk] = label_data
         return labels
 
-    def download_semantics(self, key=None):
-        if key is None:
-            param = 'annotated'
+    def download_semantics(self, *args):
+        if len(args) == 0:
+            param = 'all'
         else:
-            param = "+".join(str(x) for x in key)
+            param = "+".join(str(x) for x in args)
         suburl = "/semantics/download/%s" % param
         request_url = urlparse.urljoin(self.server_url, suburl)
+        print "accessing: %s" % request_url
         r = requests.get(request_url)
         data = json.loads(r.text, object_hook=_decode_dict)
         processed = {int(pk): {int(idx): {int(num): text

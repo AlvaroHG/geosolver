@@ -35,8 +35,8 @@ hough_circle_parameters = HoughCircleParameters(dp=1,
 
 # These eps determine pixel coverage of each primitive.
 LINE_EPS = 3
-CIRCLE_EPS = 4
+CIRCLE_EPS = 6
 PRIMITIVE_SELECTION_MIN_GAIN = 0
 
 INTERSECTION_EPS = 3
-KMEANS_RADIUS_THRESHOLD = 6
+KMEANS_RADIUS_THRESHOLD = 8

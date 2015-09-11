@@ -74,6 +74,13 @@ def distance_between_line_and_point(line, point):
         return min(distance_between_points(point, line.a),
                    distance_between_points(point, line.b))
 
+def perpendicular_distance_between_line_and_point(line, point):
+    p = midpoint(line.a, line.b)
+    vector = point.x - p.x, point.y - p.y
+    u = line_unit_vector(line)
+    n = line_normal_vector(line)
+    perpendicular_distance = abs(np.dot(vector, n))
+    return perpendicular_distance
 
 def distance_between_circle_and_point(circle, point):
     return abs(circle.radius - distance_between_points(circle.center, point))
@@ -118,7 +125,7 @@ def intersections_between_lines(line0, line1, eps):
 
 
 def intersections_between_circle_and_line(circle, line, eps):
-    min_angle = 30
+    min_angle = 40
     temp_sln = []
     normal_vector = np.array(line_normal_vector(line))
     parallel_vector = np.array(line_unit_vector(line))
@@ -152,7 +159,7 @@ def intersections_between_circle_and_line(circle, line, eps):
 
     if len(sln) == 2:
         angle = instantiators['angle'](sln[0], circle.center, sln[1])
-        if angle_in_degree(angle) < min_angle:
+        if angle_in_degree(angle, True) < min_angle:
             return [midpoint(sln[0], sln[1])]
 
     return sln
@@ -167,14 +174,26 @@ def intersections_between_circles(circle0, circle1):
     return []
 
 
-def angle_in_radian(angle, smaller=True):
+def angle_in_radian(angle, smaller=False):
+    """
     a = line_length(instantiators['line'](angle.b, angle.c))
     b = line_length(instantiators['line'](angle.c, angle.a))
     c = line_length(instantiators['line'](angle.a, angle.b))
-    smaller_angle = np.sqrt((a**2 + b**2 - c**2) / (2*a*b))
+    value = (c**2 + a**2 - b**2) / (2*c*a)
+    smaller_angle = np.arccos(value)
     if smaller:
         return smaller_angle
-
+    else:
+        a0 = cartesian_angle(angle.b, angle.a)
+        a1 = cartesian_angle(angle.b, angle.c)
+        return signed_distance_between_cartesian_angles(a0, a1)
+    """
+    a0 = cartesian_angle(angle.b, angle.a)
+    a1 = cartesian_angle(angle.b, angle.c)
+    diff = signed_distance_between_cartesian_angles(a0, a1)
+    if smaller and diff > np.pi:
+        return 2*np.pi - diff
+    return diff
 
 def angle_in_degree(angle, smaller=True):
     return 180*angle_in_radian(angle, smaller=smaller)/np.pi
@@ -182,14 +201,7 @@ def angle_in_degree(angle, smaller=True):
 
 def cartesian_angle(center, point):
     vector = point.x-center.x, point.y-center.y
-    if vector[0] == 0:
-        angle = np.pi/2
-        if vector[1] < 0:
-            angle = -np.pi/2
-    else:
-        angle = np.arctan(float(vector[1])/vector[0])
-    if vector[0] < 0:
-        angle += np.pi
+    angle = np.arctan2(vector[1], vector[0])
     if angle < 0:
         angle += 2*np.pi
     return angle
@@ -207,6 +219,35 @@ def arc_midpoint(arc):
     radius = circle.radius
     caa = cartesian_angle(circle.center, arc.a)
     cab = cartesian_angle(circle.center, arc.b)
-    cam = (caa+cab)/2.0
+    cam = caa + signed_distance_between_cartesian_angles(caa, cab)/2.0
     mp = instantiators['point'](radius*np.cos(cam), radius*np.sin(cam))
     return mp
+
+
+def normalize_angle(angle):
+    if angle < 0:
+        return angle+np.ceil(-angle/(2*np.pi))*2*np.pi
+    elif angle > 2*np.pi:
+        return angle-(np.ceil(angle/(2*np.pi))-1)*2*np.pi
+    return angle
+
+
+def horizontal_angle(angle):
+    angle = normalize_angle(angle)
+    if angle > np.pi:
+        return min(angle-np.pi, 2*np.pi-angle)
+    else:
+        return min(angle, np.pi-angle)
+
+def polygon_is_convex(points):
+    angles = [instantiators['angle'](points[index-2], points[index-1], point) for index, point in enumerate(points)]
+    calc = sum(angle_in_radian(angle, False) for angle in angles)
+    ans = np.pi*(len(points)-2)
+    if calc > ans + 10:
+        return False
+    return True
+
+def area_of_polygon(points):
+    area = 0.5*abs(sum(points[index-1][0]*p[1]-p[0]*points[index-1][1] for index, p in enumerate(points)))
+    return area
+

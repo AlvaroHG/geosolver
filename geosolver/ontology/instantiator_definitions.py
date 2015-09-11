@@ -18,8 +18,18 @@ instantiator_defs = {
     'circle': (('center', 'point'), ('radius', 'number')),
     'arc': (('circle', 'circle'), ('a', 'point'), ('b', 'point')),
     'triangle': (('a', 'point'), ('b', 'point'), ('c', 'point')),
-    'quadrilateral': (('a', 'point'), ('b', 'point'), ('c', 'point'), ('d', 'point')),
+    'quad': (('a', 'point'), ('b', 'point'), ('c', 'point'), ('d', 'point')),
+    'hexagon': (('a', 'point'), ('b', 'point'), ('c', 'point'), ('d', 'point'), ('e', 'point'), ('f', 'point')),
+    'para': (('a', 'point'), ('b', 'point'), ('c', 'point'), ('d', 'point')),
+    'rectangle': (('a', 'point'), ('b', 'point'), ('c', 'point'), ('d', 'point')),
+    'trapezoid': (('a', 'point'), ('b', 'point'), ('c', 'point'), ('d', 'point')),
+    'rhombus': (('a', 'point'), ('b', 'point'), ('c', 'point'), ('d', 'point')),
+    'square': (('a', 'point'), ('b', 'point'), ('c', 'point'), ('d', 'point')),
 }
+
+class polygon(tuple):
+    def __new__(self, *points):
+        return tuple.__new__(polygon, points)
 
 
 
@@ -27,13 +37,14 @@ instantiator_defs = {
 Initialize instantiators based on type_defs
 """
 instantiators = {}
+instantiators['polygon'] = polygon
 for key, value in instantiator_defs.iteritems():
     args, _ = zip(*value)
     nt = namedtuple(key, ' '.join(args))
     instantiators[key] = nt
 
 
-def polygon(*args):
+def get_polygon(*args):
     if len(args) == 3:
         return instantiators['triangle'](*args)
     elif len(args) == 4:
@@ -41,4 +52,4 @@ def polygon(*args):
     else:
         raise Exception()
 
-# instantiators['polygon'] = polygon
+# instantiators['get_polygon'] = get_polygon
