@@ -21,10 +21,8 @@ from geosolver.ontology.ontology_semantics import evaluate, Equals
 from geosolver.solver.solve import solve
 from geosolver.text.augment_formulas import augment_formulas
 from geosolver.text.opt_model import TextGreedyOptModel, GreedyOptModel, FullGreedyOptModel
-from geosolver.text.rule import TagRule
 from geosolver.text.rule_model import CombinedModel
 from geosolver.text.run_text import train_semantic_model, questions_to_syntax_parses, train_tag_model
-from geosolver.text.semantic_tree import SemanticTreeNode
 from geosolver.text.semantic_trees_to_text_formula_parse import semantic_trees_to_text_formula_parse
 from geosolver.text.annotation_to_semantic_tree import annotation_to_semantic_tree, is_valid_annotation
 from geosolver.text.complete_formulas import complete_formulas
@@ -82,7 +80,6 @@ def annotated_unit_test(query):
     return result
 
 def _annotated_unit_test(query):
-    print("Enter annotated unit test")
     questions = geoserver_interface.download_questions(query)
     all_annotations = geoserver_interface.download_semantics(query)
     pk, question = questions.items()[0]
@@ -121,21 +118,18 @@ def _annotated_unit_test(query):
 
     ans = solve(reduced_formulas, choice_formulas, assignment=core_parse.variable_assignment)
     print "ans:", ans
-    print("Before return result")
+
     if choice_formulas is None:
         attempted = True
         if abs(ans - float(question.answer)) < 0.01:
             correct = True
-            print("No choices correct guess: {0} <golden> : {1}".format(ans, quesion.answer))
         else:
             correct = False
     else:
         attempted = True
-        c_pair = max(ans.iteritems(), key=lambda pair: pair[1].conf)
         c = max(ans.iteritems(), key=lambda pair: pair[1].conf)[0]
         if c == int(question.answer):
             correct = True
-            print("With choices correct guess: {0} <golden> : {1}, value: {2}".format(c, quesion.answer, c_pair))
         else:
             correct = False
 
@@ -159,11 +153,9 @@ def full_unit_test(combined_model, question, label_data):
     signal.signal(signal.SIGALRM, handler)
     signal.alarm(maxtime)
 
-    print("full unit_test entry")
     try:
         result = _full_unit_test(combined_model, question, label_data)
     except Exception, e:
-        print("Exceptiont in full_unit_test")
         logging.error(question.key)
         logging.exception(e)
         result = SimpleResult(question.key, True, False, False)
@@ -189,28 +181,7 @@ def semantic_tree_to_serialized_entities(match_parse, semantic_tree, sentence_nu
                 entity = {"content": tree_node.content.serialized(), "coords": serialize_entity(coords),
                           "sentence_number": sentence_number}
                 entities.append(entity)
-    return entities
 
-def formula_to_serialized_entities(match_parse, formula, tree, sentence_number):
-    offset = match_parse.graph_parse.core_parse.image_segment_parse.diagram_image_segment.offset
-    grounded_formula = ground_formulas(match_parse, [formula])[0]
-    entities = []
-    zipped_formula = grounded_formula.zip(tree)
-    for zipped_node in zipped_formula:
-        formula_node, tree_node = zipped_node.nodes
-        if not isinstance(formula_node, FormulaNode):
-            continue
-        if len(formula_node.children) == 1 and not issubtype(formula_node.return_type, 'entity'):
-            formula_node = formula_node.children[0]
-        if issubtype(formula_node.return_type, 'entity'):
-            coords = match_parse.graph_parse.core_parse.evaluate(formula_node)
-            if coords is not None:
-                coords = offset_coords(coords, formula_node.return_type, offset)
-                content = tree_node.content.serialized()
-                content['signature']['return_type'] = formula_node.return_type
-                entity = {"content": content, "coords": serialize_entity(coords),
-                          "sentence_number": sentence_number}
-                entities.append(entity)
     return entities
 
 def offset_point(point, offset):
@@ -240,22 +211,8 @@ def serialize_entity(entity):
     except:
         return float("%.2f" % entity)
 
-def formula_to_semantic_tree(formula, syntax_parse, span):
-    """
-    Create dummy semantic tree where each tag's syntax Parse and span is given
-    :param formula:
-    :param index:
-    :return:
-    """
-    assert isinstance(formula, FormulaNode)
-    if issubtype(formula.signature.return_type, 'entity'):
-        new_sig = VariableSignature(formula.signature.id, formula.signature.return_type, name='temp')
-        tag_rule = TagRule(syntax_parse, span, new_sig)
-        return SemanticTreeNode(tag_rule, [])
-    tag_rule = TagRule(syntax_parse, span, formula.signature)
-    children = [formula_to_semantic_tree(child, syntax_parse, span) for child in formula.children]
-    semantic_tree = SemanticTreeNode(tag_rule, children)
-    return semantic_tree
+
+
 
 
 demo_path = "../temp/demo"
@@ -278,7 +235,7 @@ def _full_unit_test(combined_model, question, label_data):
     diagram_parse_list = []
     optimized_list = []
     entity_list = []
-    solution = ""
+    solution = "";
     json.dump(question._asdict(), open(question_path, 'wb'))
 
     choice_formulas = get_choice_formulas(question)
@@ -294,7 +251,6 @@ def _full_unit_test(combined_model, question, label_data):
     diagram_formulas = parse_confident_formulas(match_parse.graph_parse)
     all_formulas = set(match_formulas + diagram_formulas)
 
-    print("WWWWWWW opt_model")
     opt_model = FullGreedyOptModel(combined_model, match_parse)
     for number, sentence_words in question.sentence_words.iteritems():
         syntax_parse = stanford_parser.get_best_syntax_parse(sentence_words)
@@ -329,20 +285,6 @@ def _full_unit_test(combined_model, question, label_data):
             optimized_list.append({'simple': t.simple_repr(), 'tree': t.serialized(), 'sentence_number': number,
                                     'score': opt_model.get_magic_score(t, cc_trees)})
 
-        for key, f in expr_formulas.iteritems():
-            if key.startswith("v"):
-                pass
-            index = (i for i, word in sentence_words.iteritems() if word == key).next()
-            tree = formula_to_semantic_tree(f, syntax_parse, (index, index+1))
-            print "f and t:", f, tree
-            text_parse_list.append({'simple': f.simple_repr(), 'tree': tree.serialized(), 'sentence_number': number, 'score': 1.0})
-            optimized_list.append({'simple': f.simple_repr(), 'tree': tree.serialized(), 'sentence_number': number, 'score': 1.0})
-
-            local_entities = formula_to_serialized_entities(match_parse, f, tree, number)
-            print "local entities:", local_entities
-            entity_list.extend(local_entities)
-
-
 
         core_formulas = set(t.to_formula() for t in bool_semantic_trees)
         cc_formulas = set(t.to_formula() for t in cc_trees)
@@ -376,25 +318,23 @@ def _full_unit_test(combined_model, question, label_data):
     json.dump(entity_list, open(entity_list_path, 'wb'))
     json.dump(solution, open(solution_path, 'wb'))
 
-    #return SimpleResult(question.key, False, False, True) # Early termination
+    # return SimpleResult(question.key, False, False, True) # Early termination
 
     print "Solving..."
     ans = solve(reduced_formulas, choice_formulas, assignment=None)#core_parse.variable_assignment)
     print "ans:", ans
 
+
     if choice_formulas is None:
         penalized = False
         if Equals(ans, float(question.answer)).conf > 0.98:
-            print("Correct for non-multiple choice: {0}, golden: {1}".format(ans, quetion.answer))
             correct = True
         else:
             correct = False
     else:
         idx, tv = max(ans.iteritems(), key=lambda pair: pair[1].conf)
         if tv.conf > 0.98:
-	    print("idx {0}, answeri: {1}".format(idx, question.answer))
-            if idx == int(float(question.answer)):
-            	print("Correct for multiple choice: index: {0} value: {1}, golden: {2}".format(idx, tv, question.answer))
+            if idx == int(question.answer):
                 correct = True
                 penalized = False
             else:
@@ -492,25 +432,12 @@ def full_test():
     te_ids = ids1+ids2+ids3
     te_ids = ids4+ids6
 
-    load = False
+    load = True
 
     tr_questions = geoserver_interface.download_questions('aaai')
-    te_questions = geoserver_interface.download_questions('emnlp') 
-    
-    td_questions = geoserver_interface.download_questions('euclid')
-#    td_questions = {}
-    to_questions = geoserver_interface.download_questions('official')
-#    to_questions = {}
-    te_keys = []
-    for x in sys.argv[1].split(","):
-	if x.isalpha():
-	    temp_q = geoserver_interface.download_questions(x)
-	    te_questions = dict(te_questions.items() + temp_q.items())
-	    te_keys = te_keys + temp_q.keys() 
-	elif x.isdigit():
-	    te_keys.append(int(x)) 
-
-    all_questions = dict(tr_questions.items() + te_questions.items() + td_questions.items() + to_questions.items())
+    te_questions = geoserver_interface.download_questions('official')
+    te_keys = [993,995,1011,1020,1483,1037]#te_questions.keys() #[968, 971, 973, 1018]
+    all_questions = dict(tr_questions.items() + te_questions.items())
     tr_ids = tr_questions.keys()
     te_ids = te_questions.keys()
 
@@ -527,7 +454,6 @@ def full_test():
     error = 0
     total = len(te_keys)
 
-    print te_keys
     #(te_s, te_a, te_l), (tr_s, tr_a, trl_l) = split([all_syntax_parses, all_annotations, all_labels], 0.7)
     tr_s = {id_: all_syntax_parses[id_] for id_ in tr_ids}
     tr_a = {id_: all_annotations[id_] for id_ in tr_ids}
@@ -542,19 +468,14 @@ def full_test():
 
     print "test ids: %s" % ", ".join(str(k) for k in te_s.keys())
     for idx, id_ in enumerate(te_keys):
-        if id_ not in all_labels:
-	    print "No annotation for image"
-	    result = SimpleResult(id_, True, False, False)
-	else:
-            question = all_questions[id_]
-            label = all_labels[id_]
-            id_ = str(id_)
-            print "-"*80
-            print "id: %s" % id_
-            result = full_unit_test(cm, question, label)
-            print("RESULT: {0} ".format(result))
-            print result.message
-            print result
+        question = all_questions[id_]
+        label = all_labels[id_]
+        id_ = str(id_)
+        print "-"*80
+        print "id: %s" % id_
+        result = full_unit_test(cm, question, label)
+        print result.message
+        print result
         if result.error:
             error += 1
         if result.penalized:

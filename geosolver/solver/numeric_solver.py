@@ -1,6 +1,6 @@
 import functools
 import algopy
-
+import pyipopt
 from scipy.optimize import minimize, newton_krylov, basinhopping
 import numpy as np
 from scipy.optimize.nonlin import NoConvergence
@@ -51,7 +51,6 @@ class NumericSolver(object):
         variable_node = self.variable_handler.add(variable_node)
         if not self.assigned:
             self.solve()
-        # print('evi', variable_node, self.assignment)
         return evaluate(variable_node, self.assignment)
 
 

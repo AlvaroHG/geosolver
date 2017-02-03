@@ -19,7 +19,6 @@ def solve(given_formulas, choice_formulas=None, assignment=None):
     #1. Find query formula in true formulas
     true_formulas = []
     query_formula = None
-    print("Given formulas: {0}".format(given_formulas))
     for formula in given_formulas:
         assert isinstance(formula, FormulaNode)
         if formula.has_signature("What") or formula.has_signature("Which") or formula.has_signature("Find"):
@@ -42,8 +41,6 @@ def solve(given_formulas, choice_formulas=None, assignment=None):
             for key, choice_formula in choice_formulas.iteritems():
                 equal_formula = FormulaNode(signatures['Equals'], [ns.assignment['What'], choice_formula])
                 out[key] = ns.evaluate(equal_formula)
-		print equal_formula
-		print ns.assignment["What"]
 
             """
             ns = NumericSolver(true_formulas)
@@ -70,9 +67,6 @@ def solve(given_formulas, choice_formulas=None, assignment=None):
             for key, choice_formula in choice_formulas.iteritems():
                 replaced_formula = FormulaNode(signatures['Equals'], [query_formula.children[0], choice_formula])
                 out[key] = ns.evaluate(replaced_formula)
-		out[key].formula = replaced_formula
-		print replaced_formula
-		print("Key: ", out[key])
         # display_entities(ns)
 
 
