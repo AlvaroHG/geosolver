@@ -388,7 +388,7 @@ def _full_unit_test(combined_model, question, label_data):
     else:
         idx, tv = max(ans.iteritems(), key=lambda pair: pair[1].conf)
         if tv.conf > 0.98:
-	        print("index: {0}, answer_index: {1}".format(idx, question.answer))
+	    print("index: {0}, answer_index: {1}".format(idx, question.answer))
             if idx == int(float(question.answer)):
             	print("Correct for multiple choice: index: {0} value: {1}, golden: {2}".format(idx, tv, question.answer))
                 correct = True
