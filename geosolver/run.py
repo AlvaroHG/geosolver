@@ -82,7 +82,6 @@ def annotated_unit_test(query):
     return result
 
 def _annotated_unit_test(query):
-    print("Enter annotated unit test")
     questions = geoserver_interface.download_questions(query)
     all_annotations = geoserver_interface.download_semantics(query)
     pk, question = questions.items()[0]
@@ -121,7 +120,6 @@ def _annotated_unit_test(query):
 
     ans = solve(reduced_formulas, choice_formulas, assignment=core_parse.variable_assignment)
     print "ans:", ans
-    print("Before return result")
     if choice_formulas is None:
         attempted = True
         if abs(ans - float(question.answer)) < 0.01:
@@ -159,7 +157,6 @@ def full_unit_test(combined_model, question, label_data):
     signal.signal(signal.SIGALRM, handler)
     signal.alarm(maxtime)
 
-    print("full unit_test entry")
     try:
         result = _full_unit_test(combined_model, question, label_data)
     except Exception, e:
@@ -294,7 +291,6 @@ def _full_unit_test(combined_model, question, label_data):
     diagram_formulas = parse_confident_formulas(match_parse.graph_parse)
     all_formulas = set(match_formulas + diagram_formulas)
 
-    print("WWWWWWW opt_model")
     opt_model = FullGreedyOptModel(combined_model, match_parse)
     for number, sentence_words in question.sentence_words.iteritems():
         syntax_parse = stanford_parser.get_best_syntax_parse(sentence_words)
@@ -392,7 +388,7 @@ def _full_unit_test(combined_model, question, label_data):
     else:
         idx, tv = max(ans.iteritems(), key=lambda pair: pair[1].conf)
         if tv.conf > 0.98:
-	    print("idx {0}, answeri: {1}".format(idx, question.answer))
+	        print("index: {0}, answer_index: {1}".format(idx, question.answer))
             if idx == int(float(question.answer)):
             	print("Correct for multiple choice: index: {0} value: {1}, golden: {2}".format(idx, tv, question.answer))
                 correct = True
@@ -496,11 +492,8 @@ def full_test():
 
     tr_questions = geoserver_interface.download_questions('aaai')
     te_questions = geoserver_interface.download_questions('emnlp') 
-    
-    td_questions = geoserver_interface.download_questions('euclid')
-#    td_questions = {}
     to_questions = geoserver_interface.download_questions('official')
-#    to_questions = {}
+
     te_keys = []
     for x in sys.argv[1].split(","):
 	if x.isalpha():
@@ -510,7 +503,7 @@ def full_test():
 	elif x.isdigit():
 	    te_keys.append(int(x)) 
 
-    all_questions = dict(tr_questions.items() + te_questions.items() + td_questions.items() + to_questions.items())
+    all_questions = dict(tr_questions.items() + te_questions.items() + to_questions.items())
     tr_ids = tr_questions.keys()
     te_ids = te_questions.keys()
 
@@ -527,7 +520,6 @@ def full_test():
     error = 0
     total = len(te_keys)
 
-    print te_keys
     #(te_s, te_a, te_l), (tr_s, tr_a, trl_l) = split([all_syntax_parses, all_annotations, all_labels], 0.7)
     tr_s = {id_: all_syntax_parses[id_] for id_ in tr_ids}
     tr_a = {id_: all_annotations[id_] for id_ in tr_ids}
@@ -540,7 +532,7 @@ def full_test():
     else:
         cm = pickle.load(open('cm.p', 'rb'))
 
-    print "test ids: %s" % ", ".join(str(k) for k in te_s.keys())
+    print "Test ids: %s" % ", ".join(str(k) for k in te_s.keys())
     for idx, id_ in enumerate(te_keys):
         if id_ not in all_labels:
 	    print "No annotation for image"
